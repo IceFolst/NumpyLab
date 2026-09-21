@@ -1,5 +1,8 @@
 import numpy as np
 
+from day5.exo import scaled_scores
+
+
 def softmax(x):
     shift = x - np.max(x, axis=-1, keepdims=True)
     exp_x = np.exp(shift)
@@ -166,3 +169,109 @@ def combine_heads(x):
     x = x.transpose(0, 2, 1, 3)
     x = x.reshape(batch, tokens, heads * head_dim)
     return x
+
+# x.shape = (64, 8, 128, 64)
+# x.transpose(0, 2, 1, 3) => shape = (64, 128, 8, 64)
+# after head combine => shape = (64, 128, 514
+
+X = np.random.randn(2, 4, 8)
+
+num_heads = 2
+embedding = 8
+
+Wq = np.random.randn(embedding, embedding)
+Wk = np.random.randn(embedding, embedding)
+Wv = np.random.randn(embedding, embedding)
+
+Q = X @ Wq
+K = X @ Wk
+V = X @ Wv
+
+Q = split_head(Q, num_heads)
+K = split_head(K, num_heads)
+V = split_head(V, num_heads)
+
+scores = Q @ K.swapaxes(-1, -2)
+
+scores = scores / np.sqrt(Q.shape[-1])
+
+weights = softmax(scores)
+
+head_output = weights @ V
+
+output = combine_heads(head_output)
+
+# Final shape:  (2, 4, 8)
+#
+# Same shape as X.
+
+
+def multi_head_attention(X, Wq, Wk, Wv, Wo, num_heads):
+    Q, K, V = X @ Wq, X @ Wk, X @ Wv
+
+    Q, K, V = split_head(Q, num_heads), split_head(K, num_heads), split_head(V, num_heads)
+
+    score = Q @ K.swapaxes(-1, -2)
+    scaled_scores = score / np.sqrt(Q.shape[-1])
+
+    weights = softmax(scaled_scores)
+
+    heads = weights @ V
+
+    output = combine_heads(heads)
+
+    output = output @ Wo
+
+    return output
+
+# self-attention,
+# because Q, K, V all come from the same X.
+# So one sequence is attending to itself.
+# Later, in cross-attention, Q could come from one source and K/V from another.
+
+# Main challenge
+
+np.random.seed(0)
+
+X = np.random.randn(2, 3, 4)
+
+num_heads = 2
+embedding = 4
+
+Wq = np.random.randn(4, 4)
+Wk = np.random.randn(4, 4)
+Wv = np.random.randn(4, 4)
+Wo = np.random.randn(4, 4)
+
+Q, K, V = X @ Wq, X @ Wk, X @ Wv
+Q, K, V = split_head(Q, num_heads), split_head(K, num_heads), split_head(V, num_heads)
+
+scores = Q @ K.swapaxes(-1, -2)
+scaled_scores = scores / np.sqrt(Q.shape[-1])
+
+weights = softmax(scaled_scores)
+print(weights.sum(axis=-1))
+
+heads = weights @ V
+
+output = combine_heads(heads)
+
+output = output @ Wo
+
+def multi_head_attention(X, Wq, Wk, Wv, Wo, num_heads):
+    Q, K, V = X @ Wq, X @ Wk, X @ Wv
+
+    Q, K, V = split_head(Q, num_heads), split_head(K, num_heads), split_head(V, num_heads)
+
+    score = Q @ K.swapaxes(-1, -2)
+    scaled_scores = score / np.sqrt(Q.shape[-1])
+
+    weights = softmax(scaled_scores)
+
+    heads = weights @ V
+
+    output = combine_heads(heads)
+
+    output = output @ Wo
+
+    return output, weights
