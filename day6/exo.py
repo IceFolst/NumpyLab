@@ -1,7 +1,5 @@
 import numpy as np
 
-from day5.exo import scaled_scores
-
 
 def softmax(x):
     shift = x - np.max(x, axis=-1, keepdims=True)
